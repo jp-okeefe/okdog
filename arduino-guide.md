@@ -14,6 +14,36 @@ This is our cheat sheet for the actual Arduino board — what to install, how to
 ### Fun fact: it already does something out of the box
 The board ships pre-loaded with a Tetris animation that plays on its built-in LED matrix. Uploading your own sketch will overwrite it — if you want it back later, the restore code is on the [Getting Started page](https://docs.arduino.cc/tutorials/uno-r4-wifi/r4-wifi-getting-started) (search "Tetris Animation Sketch").
 
+## SG90 servo — datasheet & wire colours
+
+The datasheet is saved locally at [`datasheets/sg90_datasheet.pdf`](datasheets/sg90_datasheet.pdf) (source: [Tower Pro SG90 datasheet, via GitHub](https://github.com/Jason2062/2D-Printer/blob/master/Component%20Datasheets/SG90%20Servo%20Motor%20Datasheet.pdf)).
+
+**Confirmed wire colours (straight from the datasheet's own wiring diagram):**
+
+| Wire colour | Function | Goes to |
+|---|---|---|
+| Orange | Signal (PWM) | An Arduino digital pin |
+| Red | Power (Vcc, +) | The battery pack — **not** the Arduino 5V pin |
+| Brown | Ground (–) | Battery pack ground + Arduino GND (all tied together) |
+
+(The other common SG90 colour scheme in the wild is white/red/black, same order: signal/power/ground. If a servo ever turns up with different colours, the middle wire is always power, flanked by signal on one side and ground on the other.)
+
+Genuine SG90s come with a small female 3-pin connector already crimped onto the end of these wires — it just pushes straight onto male header pins or male-to-female jumper wires, no soldering required. If soldering came up for this build, it's more likely for something else (joining the battery pack's leads to a connector, extending a wire that's too short, etc.) rather than the servo's own plug — see Step 2 of PLAN.md for solder-free workarounds for that.
+
+**Key specs from the datasheet:**
+
+| Spec | Value |
+|---|---|
+| Weight | 9 g |
+| Dimensions | 22.2 × 11.8 × 31 mm |
+| Stall torque | 1.8 kgf·cm |
+| Operating speed | 0.1 s / 60° |
+| Operating voltage | 4.8 V (~5 V) |
+| Temperature range | 0–55 °C |
+| Control signal | Standard hobby PWM: 50 Hz (20 ms period), ~1–2 ms pulse width — 1.5 ms = centre (0°), ~2 ms = +90°, ~1 ms = –90° |
+
+This confirms the `Servo.write(angle)` calls in the example sketch above (0–180°, centred at 90) map correctly onto this servo's real pulse-width range — the `Servo` library handles the pulse timing for us, so there's nothing extra to configure.
+
 ## The power rule (important — read before wiring any servo)
 
 > **Never power a servo motor from the Arduino's 5V pin.**
@@ -103,6 +133,7 @@ void loop() {}
 
 ## Key reference links
 
+- [SG90 servo datasheet (local copy)](datasheets/sg90_datasheet.pdf) — specs, dimensions, and the wiring/pulse diagram
 - [Getting Started with UNO R4 WiFi](https://docs.arduino.cc/tutorials/uno-r4-wifi/r4-wifi-getting-started) — IDE + board package install (source for the setup steps above)
 - [UNO R4 WiFi User Manual / Cheat Sheet](https://docs.arduino.cc/tutorials/uno-r4-wifi/cheat-sheet) — the master reference: full pinout, power supply rules, PWM, I2C, SPI, LED matrix, Bluetooth/WiFi (source for the pinout + power info above)
 - [UNO R4 WiFi datasheet (PDF)](https://docs.arduino.cc/resources/datasheets/ABX00087-datasheet.pdf) — official electrical specs, for when we need exact numbers

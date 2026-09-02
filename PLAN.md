@@ -6,7 +6,8 @@
 
 Related docs:
 - [handover.md](handover.md) — origin story of the project (the original Gemini conversation) and the shopping list
-- [arduino-guide.md](arduino-guide.md) — first-time Arduino UNO R4 WiFi setup + reference links (pinout, wiring, docs)
+- [arduino-guide.md](arduino-guide.md) — first-time Arduino UNO R4 WiFi setup + reference links (pinout, wiring, docs, code references on GitHub)
+- [shopping-list.md](shopping-list.md) — living list of parts still needed, with links
 
 ## Current stage
 
@@ -18,8 +19,8 @@ Related docs:
 - [x] Servo motors purchased
 - [x] Arduino Uno R4 WiFi purchased
 - [x] 3D printer available, printing skills in-house
-- [x] Battery pack for servo power — already have one
 - [x] 4 servos confirmed (one per leg — proper quadruped walk)
+- [x] Power source for servos: leaning towards a **USB lithium-ion power bank** rather than the 4×AA holder (more capacity, steadier voltage, comfortably covers the current draw — see arduino-guide.md for the full comparison and a note on a "USB breakout board with screw terminals" to wire it in without soldering)
 
 ### Step 1 — Arduino first-time setup
 - [ ] Install the Arduino IDE and the UNO R4 board package (see [arduino-guide.md](arduino-guide.md))
@@ -30,9 +31,9 @@ Related docs:
 Goal: get **one** servo sweeping back and forth under Arduino control before building anything permanent.
 
 - [ ] Servo wiring, no soldering needed for the standard 3-pin connector:
-  - Signal (orange/yellow) wire → Arduino digital pin (e.g. D9)
-  - Power (red) wire → **do not use the Arduino 5V pin for this** — see power note below
-  - Ground (brown/black) wire → Arduino GND, and tied to the battery's ground too
+  - Signal (orange) wire → Arduino digital pin (e.g. D9)
+  - Power (red) wire → **do not use the Arduino 5V pin for this** — the power bank instead (via a screw-terminal USB breakout, see arduino-guide.md)
+  - Ground (brown) wire → tied to the power bank's ground and the Arduino's GND
 - [ ] If a connector genuinely needs joining (e.g. splicing an extension wire, or wiring the battery pack to a barrel jack) and there's no soldering iron to hand yet, solder-free options:
   - small screw-terminal block or "chocolate block" connector
   - Wago-style lever nuts (very kid-friendly, reusable, no tools)
@@ -43,8 +44,8 @@ Goal: get **one** servo sweeping back and forth under Arduino control before bui
 
 ### Step 3 — All 4 servos + basic gait
 - [ ] Repeat Step 2's wiring for all 4 servos (signal pins D9, D10, D11, D6 — see pinout in the guide for why these ones)
-- [ ] All 4 servo power (red) wires → the battery pack we already have, not the Arduino 5V pin (see power rule in the guide)
-- [ ] Write/adapt a simple walking gait sketch (moves legs in sequence rather than all at once)
+- [ ] All 4 servo power (red) wires → the power bank (via the screw-terminal USB breakout), not the Arduino 5V pin (see power rule in the guide)
+- [ ] Write/adapt a simple walking gait sketch (moves legs in sequence rather than all at once) — see the "Code references on GitHub" section of arduino-guide.md for open-source starting points to study/adapt
 - [ ] Test on the cardboard mock-up first
 
 ### Step 4 — 3D-printed chassis
@@ -52,6 +53,15 @@ Goal: get **one** servo sweeping back and forth under Arduino control before bui
 - [ ] Print a test leg first to confirm the servo horn fits before printing a full set
 - [ ] Print full chassis + 4 legs
 - [ ] Transplant the proven wiring/code from the cardboard version onto the printed body
+
+### Step 4.5 — Veroboard prototype, then (maybe) a custom PCB
+We're still at proof-of-concept, so the plan is a hand-wired **veroboard/stripboard** build first — replaces the tangle of loose wires and jumper leads with something sturdier, without needing PCB design software or a manufacturing wait. See [shopping-list.md](shopping-list.md) for parts + links.
+
+- [ ] Solder male header pins onto the veroboard as a plug-in socket for each of the 4 servos (their female JR connector plugs straight on — no soldering the servo wires themselves)
+- [ ] Wire up the power rail: USB-A-to-screw-terminal breakout in from the power bank, out to all 4 servo power pins, common ground rail
+- [ ] Add a DC barrel jack pigtail if we want the Arduino itself powered from the same board/battery via its jack, rather than a separate USB-C cable
+- [ ] Once this is proven reliable, decide whether to design a proper **PCB** (free software: KiCad, or browser-based EasyEDA) and get a small batch manufactured (e.g. JLCPCB/PCBWay — cheap, but 1-2 weeks to arrive, so plan ahead if we want it)
+- [ ] If we do go the manufactured-PCB route, it could carry the future eyes/voice components (Step 5) too, so everything mounts on one board inside the dog
 
 ### Step 5 — Ambitious extras (once it's walking reliably)
 - [ ] **Eyes:** LED or small LCD eyes

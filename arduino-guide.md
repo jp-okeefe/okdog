@@ -57,6 +57,44 @@ Instead:
 
 Extra detail if useful later: the board can be powered itself via VIN (6–24V, e.g. the barrel jack) or via USB-C (5V only). When powered via VIN, the 5V pin can supply up to 1.2A through the onboard regulator; via USB, up to 2A. Either way, that's the board's own budget, not something to route servo current through.
 
+### The actual numbers: what a SG90 draws vs. what the board can give
+
+An SG90's current draw depends heavily on what it's doing:
+
+| Servo state | Typical current (per servo) |
+|---|---|
+| Idle (holding position, not moving) | ~10 mA |
+| Moving normally | ~100–250 mA |
+| Stalled (pushed past its mechanical limit, or under heavy load) | ~360–700 mA |
+
+(Figures from independent servo testing — [ProtoSupplies](https://protosupplies.com/product/servo-motor-micro-sg90/) measured 360 mA stall current on their units; [Zbotic's guide](https://zbotic.in/sg90-servo-motor-pinout-torque-specs-arduino-projects/) cites 500–700 mA as a stall-current range seen in the wild. Exact numbers vary batch to batch.)
+
+Now scale that to **4 servos moving at once** — e.g. every step of a walking gait:
+- Normal movement: 4 × 100–250 mA = **400 mA to 1 A**
+- Worst case (a couple of legs stalled against something, e.g. the dog's own weight or a joint that's a bit too tight): could spike well past **1.5–2 A**
+
+Compare that to the UNO R4 WiFi's 5V pin budget: **1.2 A** if the board is powered via the barrel jack/VIN, or **2 A** if powered via USB — and that budget is shared with the microcontroller itself, the onboard LED matrix, and (this board specifically) the ESP32 WiFi/Bluetooth module, which has its own current spikes when transmitting. So even in the best case, 4 servos moving together can eat the board's *entire* power budget with nothing left over for the board itself, and a stall condition can exceed it outright — that's what causes the resets/glitches/brownouts. It's not that the board "can't do 5V" — it's that servos are current-hungry, bursty loads and the board's regulator has a hard ceiling.
+
+This is exactly why the plan is: signal wires to the Arduino, but power (red) wires straight to the battery pack, with only a shared ground tying the two power systems together.
+
+### Choosing the power source: 4×AA vs. a USB power bank
+
+We have both a 4×AA holder and USB lithium-ion power banks on hand — a power bank is actually the better choice for the servo rail, for a few concrete reasons:
+
+| | 4×AA (alkaline) | USB power bank |
+|---|---|---|
+| Voltage | 6 V fresh, sagging as they drain (SG90's max rated voltage is 6 V, so fresh alkalines are right at the edge) | Regulated 5 V output, stays steady until it's nearly empty — sits comfortably mid-range for the SG90 (4.8–6 V rated) |
+| Capacity | ~2,000–3,000 mAh, but alkaline cells have higher internal resistance, so voltage droops more under the bursty current a servo pulls | Typically 5,000–20,000 mAh — several times the runtime, and lithium cells handle sudden current draws better |
+| Current capability | Fine for occasional bursts, but not designed for sustained high current | Most banks are rated 1–2.4 A per port (check the label) — comfortably covers our 400 mA–1 A normal-movement estimate above, with headroom for brief stalls too |
+
+Rough runtime estimate: a 10,000 mAh power bank against an average draw of ~400 mA–1 A (servos aren't drawing their peak current the whole time — only while actually moving) works out to somewhere in the region of 10-20+ hours of real use, far more than a 4×AA pack would give.
+
+**One quirk to know about:** some USB power banks auto-shutoff when they detect a very low current draw for a while (often somewhere around 50–60 mA) — this is a battery-saving feature meant for phone charging, and can cause the bank to switch itself off if the dog sits completely idle for a stretch. In practice this is unlikely to bite here: while the servos are actively walking they pull far more than that threshold, and if the Arduino's WiFi/Bluetooth module is active it also draws well above it. If it ever does trigger, the fix is usually to keep something drawing a small current in the background (an LED, or a tiny periodic servo twitch) — worth knowing if the dog ever seems to "run out of power" despite a full battery.
+
+**Wiring it up:** rather than a breakout board dangling on its own cable, the plan is a small **USB-C female breakout board** — a compact PCB with the USB-C socket on one side and 0.1"/2.54mm header pins on the other (same pitch as the servo headers) — soldered directly onto the veroboard itself, so the finished board just has a female USB-C port built in. The battery's USB A-to-C cable then plugs straight into that, no separate cord in between. We only need to wire up the 5V and GND pins from its header out to the servo power rail (it also exposes D+/D-, CC1/CC2, SBU1/SBU2, which we can ignore). See shopping-list.md for the exact part. Worth double-checking it's a plain 5V breakout rather than a "PD trigger" board (those are designed to negotiate a higher voltage like 9V/12V from the source, which we don't want here).
+
+The Arduino itself can be powered the normal way, via its own USB-C cable, ideally from a second power bank (or a second port on the same one) so its power draw is never sharing a rail with the servos — grounds still get tied together as usual.
+
 ## Pinout — what to plug in where
 
 Full official pin table (Arduino UNO R4 WiFi):
@@ -143,6 +181,20 @@ void loop() {}
 - [Arduino UNO R4 Servo Motor tutorial (newbiely.com)](https://newbiely.com/tutorials/arduino-uno-r4/arduino-uno-r4-servo-motor) — worked example specific to this board
 - [VarSpeedServoRA4M1 library (GitHub)](https://github.com/KaledSouky/VarSpeedServoRA4M1) — fallback if servo jitter shows up
 - Arduino Forum threads on R4 servo quirks, if needed: ["Trouble with Servos on R4 Wifi"](https://forum.arduino.cc/t/trouble-with-servos-on-r4-wifi/1151749), ["Fixing Jumping UNO R4 Servos" (DigiKey forum)](https://forum.digikey.com/t/fixing-jumping-arduino-uno-r4-servos-for-smooth-motion/50873)
+- [SG90 current draw measurements (ProtoSupplies)](https://protosupplies.com/product/servo-motor-micro-sg90/) and [Zbotic's SG90 guide](https://zbotic.in/sg90-servo-motor-pinout-torque-specs-arduino-projects/) — source for the current-draw table above
+- [Arduino Forum: power bank auto-shutoff discussion](https://forum.arduino.cc/t/powering-arduino-uno-and-servomotor-from-usb-power-bank/438001) — background on the low-current cutoff quirk
+- [USB-C female breakout board, 24-pin, header pins (Amazon UK)](https://www.amazon.co.uk/Breakout-Female-Socket-Connector-Board/dp/B0C7KN8VK7) — a bare connector board (no cable) that solders onto the veroboard to give it a built-in female USB-C port
+
+## Code references on GitHub
+
+A few open-source starting points, roughly in order of how close they are to our exact setup:
+
+- [Arduino's own `Servo` library examples](https://github.com/arduino-libraries/Servo/blob/master/examples/Sweep/Sweep.ino) — the canonical single-servo sweep example, functionally the same as the minimal example above. Good baseline, definitely works on the R4 WiFi since it's the official library.
+- [advayc/Quadruped](https://github.com/advayc/Quadruped) — a 4-servo walking quadruped (one servo per leg, same scale as ours), with separate sketches for forward/backward/left/right/turning gaits — a good source of gait *logic* to study. **Caveat:** it's written for an ATmega328p board (Arduino Nano, via the MightyCore library) and pokes hardware timer registers directly rather than using the `Servo` library — that low-level code won't run as-is on the R4 WiFi's different (Renesas ARM) chip. Worth reading for the walking-sequence logic (which servo moves when), then re-implementing the actual servo control with `Servo.write()`, which does work on the R4.
+- [SilentWoof/Barkduino](https://github.com/SilentWoof/Barkduino) — a 4-servo, Arduino Uno/Nano-compatible "expressive" quadruped: modular leg poses (`poseSleep()`, `poseStand()`), a distance sensor for triggered behaviours, and an expandable "trait" system for personality actions. This lines up nicely with both the walking-gait step and the longer-term "give it personality" ambition. **Note:** its license is personal/educational/non-commercial use only, which is fine for this project, but worth knowing if it's ever shared beyond that.
+- [anoochit/arduino-quadruped-robot](https://github.com/anoochit/arduino-quadruped-robot) — a more advanced 12-servo (3 per leg) spider-style robot with Bluetooth app control and 3D-printable STL files — more ambitious than our 1-servo-per-leg design, but a good reference for later if we ever want more articulated legs.
+- [PetoiCamp/OpenCat-Quadruped-Robot](https://github.com/PetoiCamp/OpenCat-Quadruped-Robot) — a full open-source framework for Boston-Dynamics-style robot pets. Overkill for where we are now, but a good source of inspiration/ideas for the ambitious extras down the line.
+- [Quadruino: Robot Quadruped Walking (Arduino Project Hub)](https://projecthub.arduino.cc/escorpia/quadruino-robot-quadruped-walking-09fb92) — a full build walkthrough (not just code) with wiring diagrams, useful alongside the GitHub repos above.
 
 ## Later: parts to research for the ambitious extras
 - Small OLED/LCD (I2C, e.g. SSD1306) for eyes
